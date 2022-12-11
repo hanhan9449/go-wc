@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 )
 
 type tuple struct {
@@ -14,19 +15,19 @@ type tuple struct {
 }
 
 func main() {
-	ch := make(chan tuple)
-	done := 0
 	params := os.Args[1:]
+	wg := sync.WaitGroup{}
 	fmt.Println(params)
 	for _, path := range params {
-		go wc(ch, path)
+		wg.Add(1)
+		path := path
+		go func() {
+			tuple := wc(path)
+			fmt.Println(tuple)
+			wg.Done()
+		}()
 	}
-	for done != len(params) {
-		value := <-ch
-		done++
-		fmt.Println(value)
-	}
-	close(ch)
+	wg.Wait()
 
 }
 
@@ -35,7 +36,7 @@ func main() {
  * -l only Lines
  * -w only Words
  */
-func wc(ch chan tuple, path string) {
+func wc(path string) tuple {
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatal("参数错误")
@@ -49,5 +50,5 @@ func wc(ch chan tuple, path string) {
 		words += uint(len(strings.Fields(fmt.Sprintf("%s", next))))
 	}
 	result := tuple{lines: lines, words: words, bytes: bytes, name: path}
-	ch <- result
+	return result
 }
